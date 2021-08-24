@@ -1,0 +1,31 @@
+
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
+  RUST_BACKTRACE: 1
+
+jobs:
+  build_and_test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build no features
+        run: cargo build
+      - name: Build cipher
+        run: cargo build --features "cipher"
+      - name: Build signature
+        run: cargo build --features "signature"
+      - name: Build all
+        run: cargo build --all-features
+      - name: Run tests
+        run: cargo test --all-features
