@@ -5,9 +5,9 @@
 //! use fire_crypto::cipher::{Keypair, Nonce};
 //!
 //! // Alice creates a key only she knows.
-//! let alice_privkey = Keypair::generate();
+//! let alice_privkey = Keypair::new();
 //! // Bob creates a key only he knows.
-//! let bob_privkey = Keypair::generate();
+//! let bob_privkey = Keypair::new();
 //!
 //! // Alice sends it's public key to bob.
 //! let alice_pubkey = alice_privkey.public();
@@ -71,8 +71,8 @@ mod tests {
 
 	#[test]
 	pub fn diffie_keypair() {
-		let alice = Keypair::generate();
-		let bob = Keypair::generate();
+		let alice = Keypair::new();
+		let bob = Keypair::new();
 
 		let alice_ssk = alice.diffie_hellman(bob.public());
 		let bob_ssk = bob.diffie_hellman(alice.public());
@@ -82,8 +82,8 @@ mod tests {
 
 	#[test]
 	pub fn diffie_ephemeral_keypair() {
-		let alice = EphemeralKeypair::generate();
-		let bob = EphemeralKeypair::generate();
+		let alice = EphemeralKeypair::new();
+		let bob = EphemeralKeypair::new();
 
 		let alice_public_key = alice.public().clone();
 
@@ -96,7 +96,7 @@ mod tests {
 	#[cfg(feature = "b64")]
 	#[test]
 	pub fn b64() {
-		let alice = Keypair::generate();
+		let alice = Keypair::new();
 
 		let b64 = alice.to_b64();
 		let alice_2 = Keypair::from_b64(&b64).unwrap();
@@ -106,8 +106,8 @@ mod tests {
 
 	#[test]
 	pub fn to_key() {
-		let alice = Keypair::generate();
-		let bob = Keypair::generate();
+		let alice = Keypair::new();
+		let bob = Keypair::new();
 
 		let alice_ssk = alice.diffie_hellman(bob.public());
 		let bob_ssk = bob.diffie_hellman(alice.public());

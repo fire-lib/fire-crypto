@@ -1,8 +1,10 @@
 use crate::fill_random;
 
+use std::convert::TryInto;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Nonce {
-	inner: [u8; 24]
+	bytes: [u8; 24]
 }
 
 impl Nonce {
@@ -10,29 +12,48 @@ impl Nonce {
 
 	/// Creates a new random Nonce.
 	pub fn new() -> Self {
-		let mut this = Self { inner: [0u8; 24] };
+		let mut this = Self { bytes: [0u8; 24] };
 		this.fill_random();
 		this
 	}
 
 	/// Fills the nonce with new random bytes.
 	pub fn fill_random(&mut self) {
-		fill_random(&mut self.inner);
+		fill_random(&mut self.bytes);
 	}
 
 	#[cfg(test)]
 	pub fn ones() -> Self {
-		Self { inner: [1u8; 24] }
+		Self { bytes: [1u8; 24] }
 	}
 
-	/// Returns the nonce as a reference.
-	pub fn as_ref(&self) -> &[u8; 24] {
-		&self.inner
+	/// Creates a nonce from bytes.
+	pub fn from_bytes(bytes: [u8; 24]) -> Self {
+		Self { bytes }
+	}
+
+	/// ## Panics
+	/// if the slice is not 24 bytes long.
+	pub fn from_slice(slice: &[u8]) -> Self {
+		Self::from_bytes(slice.try_into().unwrap())
+	}
+
+	pub fn try_from_slice(slice: &[u8]) -> Option<Self> {
+		slice.try_into().ok()
+			.map(Self::from_bytes)
+	}
+
+	pub fn to_bytes(&self) -> [u8; 24] {
+		self.bytes
 	}
 
 	/// Returns the nonce representation.
-	pub(crate) fn into_inner(self) -> [u8; 24] {
-		self.inner
+	pub fn into_bytes(self) -> [u8; 24] {
+		self.bytes
+	}
+
+	pub fn as_slice(&self) -> &[u8] {
+		&self.bytes
 	}
 
 	/// Takes the current nonce, replacing it
@@ -42,17 +63,4 @@ impl Nonce {
 		std::mem::replace(self, n)
 	}
 
-	/// Creates a nonce from bytes.
-	pub fn from_bytes(bytes: [u8; 24]) -> Self {
-		Self { inner: bytes }
-	}
-
-	/// Creates a nonce from a slice, the slice needs to be
-	/// 24 bytes long.
-	pub fn from_slice_unchecked(slice: &[u8]) -> Self {
-		debug_assert_eq!(slice.len(), 24);
-		let mut buf = [0u8; 24];
-		buf.copy_from_slice(slice);
-		Self { inner: buf }
-	}
 }

@@ -80,7 +80,7 @@ impl Key {
 
 impl fmt::Debug for Key {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "Key {{ shared_secret, initial_nonce, count }}")
+		f.write_str("Key")
 	}
 }
 
@@ -135,7 +135,7 @@ impl SyncKey {
 
 impl fmt::Debug for SyncKey {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "SyncKey {{ shared_secret, initial_nonce, count }}")
+		f.write_str("SyncKey")
 	}
 }
 
@@ -156,7 +156,7 @@ impl ToMac for Poly1305 {
 		let bytes = (msg_len as u64).to_be_bytes();
 
 		// assuming no aad needs to be set
-		self.compute_unpadded(&bytes).into()
+		Mac::new(self.compute_unpadded(&bytes))
 	}
 }
 

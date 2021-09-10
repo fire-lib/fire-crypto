@@ -3,6 +3,7 @@ use super::{PublicKey, SharedSecret};
 use crate::FromBase64Error;
 
 use std::fmt;
+use std::convert::TryInto;
 
 use rand::rngs::OsRng;
 
@@ -17,7 +18,7 @@ pub struct EphemeralKeypair {
 }
 
 impl EphemeralKeypair {
-	pub fn generate() -> Self {
+	pub fn new() -> Self {
 		let secret = x::EphemeralSecret::new(&mut OsRng);
 		let public = PublicKey::from_ephemeral_secret(&secret);
 
@@ -26,7 +27,8 @@ impl EphemeralKeypair {
 
 	// maybe return a Key??
 	pub fn diffie_hellman(self, public_key: &PublicKey) -> SharedSecret {
-		self.secret.diffie_hellman(public_key.inner()).into()
+		let secret = self.secret.diffie_hellman(public_key.inner());
+		SharedSecret::from_shared_secret(secret)
 	}
 
 	pub fn public(&self) -> &PublicKey {
@@ -36,7 +38,9 @@ impl EphemeralKeypair {
 
 impl fmt::Debug for EphemeralKeypair {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "EphemeralKeypair {{ {:?} }}", self.public)
+		f.debug_struct("EphemeralKeypair")
+			.field("public", &self.public)
+			.finish()
 	}
 }
 
@@ -50,36 +54,50 @@ pub struct Keypair {
 }
 
 impl Keypair {
-	pub fn generate() -> Self {
-		x::StaticSecret::new(&mut OsRng).into()
+	pub const LEN: usize = 32;
+
+	fn from_static_secret(secret: x::StaticSecret) -> Self {
+		let public = PublicKey::from_static_secret(&secret);
+
+		Self { secret, public }
+	}
+
+	pub fn new() -> Self {
+		Self::from_static_secret(
+			x::StaticSecret::new(&mut OsRng)
+		)
 	}
 
 	pub fn from_bytes(bytes: [u8; 32]) -> Self {
-		x::StaticSecret::from(bytes).into()
+		Self::from_static_secret(
+			x::StaticSecret::from(bytes)
+		)
 	}
 
-	pub fn from_slice_unchecked(slice: &[u8]) -> Self {
-		let mut bytes = [0u8; 32];
-		bytes.copy_from_slice(slice);
-		bytes.into()
+	/// ## Panics
+	/// if the slice is not 32 bytes long.
+	pub fn from_slice(slice: &[u8]) -> Self {
+		Self::from_bytes(slice.try_into().unwrap())
 	}
 
-	#[cfg(feature = "b64")]
-	pub fn try_from_slice(slice: &[u8]) -> Result<Self, FromBase64Error> {
-		if slice.len() != 32 {
-			return Err(FromBase64Error::LengthNot32Bytes);
-		}
-		Ok(Self::from_slice_unchecked(slice))
+	pub fn try_from_slice(slice: &[u8]) -> Option<Self> {
+		slice.try_into().ok()
+			.map(Self::from_bytes)
 	}
 
 	pub fn to_bytes(&self) -> [u8; 32] {
 		self.secret.to_bytes()
 	}
 
+	// pub fn as_slice(&self) -> &[u8] {
+	// 	self.secret.as_ref()
+	// }
+
 	#[cfg(feature = "b64")]
 	pub fn from_b64<T: AsRef<[u8]>>(input: T) -> Result<Self, FromBase64Error> {
 		let b = base64::decode_config(input, base64::URL_SAFE_NO_PAD)?;
-		Ok(Self::try_from_slice(&b)?)
+		Self::try_from_slice(&b)
+			.ok_or(FromBase64Error::LengthNot32Bytes)
 	}
 
 	#[cfg(feature = "b64")]
@@ -92,21 +110,36 @@ impl Keypair {
 	}
 
 	pub fn diffie_hellman(&self, public_key: &PublicKey) -> SharedSecret {
-		self.secret.diffie_hellman(public_key.inner()).into()
+		let secret = self.secret.diffie_hellman(public_key.inner());
+		SharedSecret::from_shared_secret(secret)
 	}
 }
 
+#[cfg(feature = "b64")]
 impl fmt::Debug for Keypair {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "StaticKeypair {{ {:?} }}", self.public)
+		f.debug_struct("Keypair")
+			.field("secret", &self.to_b64())
+			.field("public", &self.public)
+			.finish()
 	}
 }
 
-impl From<x::StaticSecret> for Keypair {
-	fn from(secret: x::StaticSecret) -> Self {
-		let public = PublicKey::from_static_secret(&secret);
+#[cfg(not(feature = "b64"))]
+impl fmt::Debug for Keypair {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("Keypair")
+			.field("secret", &self.to_bytes())
+			.field("public", &self.public)
+			.finish()
+	}
+}
 
-		Self { secret, public }
+// Display
+#[cfg(feature = "b64")]
+impl fmt::Display for Keypair {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str(&self.to_b64())
 	}
 }
 
@@ -115,3 +148,6 @@ impl From<[u8; 32]> for Keypair {
 		Self::from_bytes(bytes)
 	}
 }
+
+#[cfg(all(feature = "serde", feature = "b64"))]
+impl_serde!(Keypair, 43);

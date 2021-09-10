@@ -1,16 +1,10 @@
 #[cfg(feature = "b64")]
 use crate::FromBase64Error;
 
-use std::fmt;
-use std::cmp;
+use std::{fmt, cmp};
+use std::convert::TryInto;
 
 use x25519_dalek as x;
-
-#[cfg(all(feature = "serde", feature = "b64"))]
-use _serde::{
-	de::{self, Deserialize, Deserializer, Visitor},
-	ser::{Serialize, Serializer}
-};
 
 #[derive(Clone)]
 pub struct PublicKey {
@@ -20,21 +14,21 @@ pub struct PublicKey {
 impl PublicKey {
 	pub const LEN: usize = 32;
 
-	pub fn from_ephemeral_secret(secret: &x::EphemeralSecret) -> Self {
+	pub(crate) fn from_ephemeral_secret(secret: &x::EphemeralSecret) -> Self {
 		Self {
 			inner: secret.into()
 		}
 	}
 
-	pub fn from_static_secret(secret: &x::StaticSecret) -> Self {
+	pub(crate) fn from_static_secret(secret: &x::StaticSecret) -> Self {
 		Self {
 			inner: secret.into()
 		}
 	}
 
-	pub fn empty_bytes() -> [u8; 32] {
-		[0u8; 32]
-	}
+	// pub(crate) fn empty_bytes() -> [u8; 32] {
+	// 	[0u8; 32]
+	// }
 
 	pub fn from_bytes(bytes: [u8; 32]) -> Self {
 		Self {
@@ -42,25 +36,19 @@ impl PublicKey {
 		}
 	}
 
-	pub fn from_slice_unchecked(slice: &[u8]) -> Self {
-		let mut bytes = [0u8; 32];
-		bytes.copy_from_slice(slice);
-		bytes.into()
+	/// ## Panics
+	/// if the slice is not 32 bytes long.
+	pub fn from_slice(slice: &[u8]) -> Self {
+		Self::from_bytes(slice.try_into().unwrap())
 	}
 
-	#[cfg(feature = "b64")]
-	pub fn try_from_slice(slice: &[u8]) -> Result<Self, FromBase64Error> {
-		if slice.len() != 32 {
-			return Err(FromBase64Error::LengthNot32Bytes);
-		}
-		Ok(Self::from_slice_unchecked(slice))
+	pub fn try_from_slice(slice: &[u8]) -> Option<Self> {
+		slice.try_into().ok()
+			.map(Self::from_bytes)
 	}
 
 	pub fn to_bytes(&self) -> [u8; 32] {
-		let mut bytes = [0u8; 32];
-		bytes.copy_from_slice(self.as_slice());
-
-		bytes
+		self.as_slice().try_into().unwrap()
 	}
 
 	pub fn as_slice(&self) -> &[u8] {
@@ -70,7 +58,8 @@ impl PublicKey {
 	#[cfg(feature = "b64")]
 	pub fn from_b64<T: AsRef<[u8]>>(input: T) -> Result<Self, FromBase64Error> {
 		let b = base64::decode_config(input, base64::URL_SAFE_NO_PAD)?;
-		Ok(Self::try_from_slice(&b)?)
+		Self::try_from_slice(&b)
+			.ok_or(FromBase64Error::LengthNot32Bytes)
 	}
 
 	#[cfg(feature = "b64")]
@@ -87,14 +76,18 @@ impl PublicKey {
 #[cfg(feature = "b64")]
 impl fmt::Debug for PublicKey {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "PublicKey({})", self.to_b64())
+		f.debug_tuple("PublicKey")
+			.field(&self.to_b64())
+			.finish()
 	}
 }
 
 #[cfg(not(feature = "b64"))]
 impl fmt::Debug for PublicKey {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "PublicKey({:?})", self.as_slice())
+		f.debug_tuple("PublicKey")
+			.field(&self.as_slice())
+			.finish()
 	}
 }
 
@@ -121,39 +114,4 @@ impl fmt::Display for PublicKey {
 }
 
 #[cfg(all(feature = "serde", feature = "b64"))]
-impl Serialize for PublicKey {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: Serializer {
-		serializer.serialize_str(&self.to_b64())
-	}
-}
-
-#[cfg(all(feature = "serde", feature = "b64"))]
-struct PublicKeyVisitor;
-
-#[cfg(all(feature = "serde", feature = "b64"))]
-impl<'de> Visitor<'de> for PublicKeyVisitor {
-	type Value = PublicKey;
-
-	fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		f.write_str("an string with 43 characters")
-	}
-
-	fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-	where E: de::Error {
-		if v.len() == 43 {
-			PublicKey::from_b64(v)
-				.map_err(|e| E::custom(format!("DecodeError {:?}", e)))
-		} else {
-			Err(E::custom("string isn't 43 characters long"))
-		}
-	}
-}
-
-#[cfg(all(feature = "serde", feature = "b64"))]
-impl<'de> Deserialize<'de> for PublicKey {
-	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-	where D: Deserializer<'de> {
-		deserializer.deserialize_str(PublicKeyVisitor)
-	}
-}
+impl_serde!(PublicKey, 43);

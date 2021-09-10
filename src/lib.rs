@@ -3,11 +3,17 @@
 use rand::rngs::OsRng;
 use rand::RngCore;
 
+#[macro_use]
+mod macros;
+
 #[cfg(feature = "cipher")]
 pub mod cipher;
 
 #[cfg(feature = "signature")]
 pub mod signature;
+
+#[cfg(feature = "hash")]
+pub mod hash;
 
 // from https://docs.rs/crate/chacha20/0.3.4/source/src/cipher.rs
 /// Xors two buffers. Both buffers need to have the same length.

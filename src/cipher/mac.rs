@@ -1,4 +1,5 @@
 use std::fmt;
+use std::convert::TryInto;
 
 use generic_array::{GenericArray, typenum};
 use typenum::{U16};
@@ -19,6 +20,10 @@ pub struct Mac {
 impl Mac {
 	pub const LEN: usize = 16;
 
+	pub(crate) fn new(tag: Tag) -> Self {
+		Self { tag }
+	}
+
 	/// This function should only be used with bytes that
 	/// were received with a message.
 	pub fn from_bytes(bytes: [u8; 16]) -> Self {
@@ -27,12 +32,15 @@ impl Mac {
 		Self { tag: Tag::new(gen) }
 	}
 
-	/// Expects the slice to be of len `Mac::LEN`.
-	pub fn from_slice_unchecked(slice: &[u8]) -> Self {
-		let mut bytes = [0u8; 16];
-		bytes.copy_from_slice(slice);
+	/// ## Panics
+	/// if the slice is not 16 bytes long.
+	pub fn from_slice(slice: &[u8]) -> Self {
+		Self::from_bytes(slice.try_into().unwrap())
+	}
 
-		Self::from_bytes(bytes)
+	pub fn try_from_slice(slice: &[u8]) -> Option<Self> {
+		slice.try_into().ok()
+			.map(Self::from_bytes)
 	}
 
 	pub fn into_bytes(self) -> [u8; 16] {
@@ -42,13 +50,7 @@ impl Mac {
 
 impl fmt::Debug for Mac {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "Mac")
-	}
-}
-
-impl From<Tag> for Mac {
-	fn from(tag: Tag) -> Self {
-		Self { tag }
+		f.write_str("Mac")
 	}
 }
 
