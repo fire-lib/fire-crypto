@@ -94,3 +94,6 @@ impl Clone for Keypair {
 		Self::from_bytes(self.to_bytes())
 	}
 }
+
+#[cfg(all(feature = "serde", feature = "b64"))]
+impl_serde!(Keypair, 43);
