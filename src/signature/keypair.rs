@@ -17,7 +17,7 @@ pub struct Keypair {
 impl Keypair {
 	pub const LEN: usize = 32;
 
-	pub fn generate() -> Self {
+	pub fn new() -> Self {
 		Self::from_keypair(ed::Keypair::generate(&mut OsRng))
 	}
 

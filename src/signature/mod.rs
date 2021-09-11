@@ -20,7 +20,7 @@ mod tests {
 	#[test]
 	pub fn b64() {
 		// keypair
-		let alice = Keypair::generate();
+		let alice = Keypair::new();
 
 		let b64 = alice.to_b64();
 		let alice_2 = Keypair::from_b64(&b64).unwrap();
@@ -30,7 +30,7 @@ mod tests {
 
 	#[test]
 	pub fn signature_test() {
-		let alice = Keypair::generate();
+		let alice = Keypair::new();
 
 		let msg = b"Hey thats my message";
 
@@ -42,7 +42,7 @@ mod tests {
 	#[cfg(feature = "b64")]
 	#[test]
 	pub fn b64_signature() {
-		let alice = Keypair::generate();
+		let alice = Keypair::new();
 		let msg = b"Hey thats my message";
 		let signature = alice.sign(msg);
 
