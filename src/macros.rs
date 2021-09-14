@@ -37,5 +37,15 @@ macro_rules! impl_serde {
 			}
 		}
 
+		impl std::str::FromStr for $struct {
+			type Err = _serde::de::value::Error;
+
+			fn from_str(s: &str) -> Result<Self, Self::Err> {
+				_serde::Deserialize::deserialize(
+					_serde::de::IntoDeserializer::into_deserializer(s)
+				)
+			}
+		}
+
 	)
 }
