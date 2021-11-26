@@ -43,7 +43,6 @@ pub fn fill_random(buf: &mut [u8]) {
 /// Since this function multiplies s with 4
 /// s needs to be 1/4 of usize::MAX in practice this should not be a problem
 /// since the tokens won't be that long.
-#[cfg(feature = "b64")]
 #[inline(always)]
 const fn calculate_b64_len(s: usize) -> usize {
 	let s = 4 * s;

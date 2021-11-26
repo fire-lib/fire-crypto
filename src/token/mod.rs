@@ -17,6 +17,10 @@ pub struct Token<const S: usize> {
 
 impl<const S: usize> Token<S> {
 
+	pub const LEN: usize = S;
+
+	pub const STR_LEN: usize = crate::calculate_b64_len(S);
+
 	/// Creates a new random Token
 	pub fn new() -> Self {
 		let mut bytes = [0u8; S];
