@@ -6,18 +6,20 @@
 //! use any salt, it is vulnerable to a rainbow table
 //! attack.
 
-
+use crate::error::TryFromError;
 #[cfg(feature = "b64")]
-use crate::FromBase64Error;
-#[cfg(feature = "b64")]
-use std::fmt;
+use crate::error::DecodeError;
 
-use std::ptr;
-use std::convert::TryInto;
+use std::{fmt, ptr};
+use std::convert::{TryFrom, TryInto};
 use std::mem::ManuallyDrop;
 
 use blake2::{Blake2b, Digest};
 use generic_array::{GenericArray, typenum::U64};
+
+pub fn hash(data: impl AsRef<[u8]>) -> Hash {
+	Hasher::hash(data)
+}
 
 pub struct Hasher {
 	inner: Blake2b
@@ -58,7 +60,7 @@ fn convert_generic_array<T>(arr: GenericArray<T, U64>) -> [T; 64] {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Hash {
 	bytes: [u8; 64]
 }
@@ -66,59 +68,114 @@ pub struct Hash {
 impl Hash {
 	pub const LEN: usize = 64;
 
-	pub fn from_bytes(bytes: [u8; 64]) -> Self {
-		Self { bytes }
-	}
-
 	/// ## Panics
 	/// if the slice is not 64 bytes long.
 	pub fn from_slice(slice: &[u8]) -> Self {
-		Self::from_bytes(slice.try_into().unwrap())
-	}
-
-	pub fn try_from_slice(slice: &[u8]) -> Option<Self> {
-		slice.try_into().ok()
-			.map(Self::from_bytes)
+		slice.try_into().unwrap()
 	}
 
 	pub fn to_bytes(&self) -> [u8; 64] {
 		self.bytes
 	}
+}
 
-	pub fn as_slice(&self) -> &[u8] {
-		&self.bytes
+#[cfg(not(feature = "b64"))]
+impl fmt::Debug for Hash {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_tuple("Hash")
+			.field(&self.as_ref())
+			.finish()
 	}
+}
 
-	#[cfg(feature = "b64")]
-	pub fn from_b64<T: AsRef<[u8]>>(input: T) -> Result<Self, FromBase64Error> {
-		let b = base64::decode_config(input, base64::URL_SAFE_NO_PAD)?;
-		Self::try_from_slice(&b)
-			.ok_or(FromBase64Error::LengthNot64Bytes)
+#[cfg(feature = "b64")]
+impl fmt::Debug for Hash {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_tuple("Hash")
+			.field(&self.to_string())
+			.finish()
 	}
+}
 
-	#[cfg(feature = "b64")]
-	pub fn to_b64(&self) -> String {
-		// returns 86 str
-		base64::encode_config(self.as_slice(), base64::URL_SAFE_NO_PAD)
+#[cfg(feature = "b64")]
+impl fmt::Display for Hash {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		base64::display::Base64Display::with_config(
+			self.as_ref(),
+			base64::URL_SAFE_NO_PAD
+		).fmt(f)
 	}
 }
 
 impl From<[u8; 64]> for Hash {
 	fn from(bytes: [u8; 64]) -> Self {
-		Self::from_bytes(bytes)
+		Self { bytes }
 	}
 }
 
-// DISPLAY
+impl TryFrom<&[u8]> for Hash {
+	type Error = TryFromError;
+
+	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
+		<[u8; 64]>::try_from(v)
+			.map_err(TryFromError::from_any)
+			.map(Self::from)
+	}
+}
+
 #[cfg(feature = "b64")]
-impl fmt::Display for Hash {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		f.write_str(&self.to_b64())
+impl crate::FromStr for Hash {
+	type Err = DecodeError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		if s.len() != crate::calculate_b64_len(Self::LEN) {
+			return Err(DecodeError::InvalidLength)
+		}
+
+		let mut bytes = [0u8; Self::LEN];
+		base64::decode_config_slice(s, base64::URL_SAFE_NO_PAD, &mut bytes)
+			.map_err(DecodeError::inv_bytes)
+			.and_then(|_| {
+				Self::try_from(bytes.as_ref())
+					.map_err(DecodeError::inv_bytes)
+			})
 	}
 }
 
-#[cfg(all(feature = "serde", feature = "b64"))]
-impl_serde!(Hash, 86);
+impl AsRef<[u8]> for Hash {
+	fn as_ref(&self) -> &[u8] {
+		&self.bytes
+	}
+}
+
+#[cfg(all(feature = "b64", feature = "serde"))]
+mod impl_serde {
+
+	use super::*;
+
+	use std::borrow::Cow;
+	use std::str::FromStr;
+
+	use _serde::{Serialize, Serializer, Deserialize, Deserializer};
+	use _serde::de::Error;
+
+	impl Serialize for Hash {
+		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S: Serializer {
+			serializer.collect_str(&self)
+		}
+	}
+
+	impl<'de> Deserialize<'de> for Hash {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where D: Deserializer<'de> {
+			let s: Cow<'_, str> = Deserialize::deserialize(deserializer)?;
+			Self::from_str(s.as_ref())
+				.map_err(D::Error::custom)
+		}
+	}
+
+}
 
 #[cfg(test)]
 mod tests {
@@ -154,7 +211,7 @@ mod tests {
 
 		let hash = Hasher::hash(bytes);
 
-		assert_eq!(hash.to_b64(), "HsyJbzTT-crEhMc_dfal-1juZ4S-QbNfRgZ7nGXGOme\
+		assert_eq!(hash.to_string(), "HsyJbzTT-crEhMc_dfal-1juZ4S-QbNfRgZ7nGXGOme\
 			U09dEESxlP3PdfetmZiBMWpv6W0YIH8EP2-eIT6XL-A");
 
 	}

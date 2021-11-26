@@ -1,9 +1,10 @@
 use super::{PublicKey, SharedSecret};
+use crate::error::TryFromError;
 #[cfg(feature = "b64")]
-use crate::FromBase64Error;
+use crate::error::DecodeError;
 
 use std::fmt;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 use rand::rngs::OsRng;
 
@@ -68,21 +69,10 @@ impl Keypair {
 		)
 	}
 
-	pub fn from_bytes(bytes: [u8; 32]) -> Self {
-		Self::from_static_secret(
-			x::StaticSecret::from(bytes)
-		)
-	}
-
 	/// ## Panics
 	/// if the slice is not 32 bytes long.
 	pub fn from_slice(slice: &[u8]) -> Self {
-		Self::from_bytes(slice.try_into().unwrap())
-	}
-
-	pub fn try_from_slice(slice: &[u8]) -> Option<Self> {
-		slice.try_into().ok()
-			.map(Self::from_bytes)
+		slice.try_into().unwrap()
 	}
 
 	pub fn to_bytes(&self) -> [u8; 32] {
@@ -93,18 +83,6 @@ impl Keypair {
 	// 	self.secret.as_ref()
 	// }
 
-	#[cfg(feature = "b64")]
-	pub fn from_b64<T: AsRef<[u8]>>(input: T) -> Result<Self, FromBase64Error> {
-		let b = base64::decode_config(input, base64::URL_SAFE_NO_PAD)?;
-		Self::try_from_slice(&b)
-			.ok_or(FromBase64Error::LengthNot32Bytes)
-	}
-
-	#[cfg(feature = "b64")]
-	pub fn to_b64(&self) -> String {
-		base64::encode_config(self.to_bytes().as_ref(), base64::URL_SAFE_NO_PAD)
-	}
-
 	pub fn public(&self) -> &PublicKey {
 		&self.public
 	}
@@ -112,16 +90,6 @@ impl Keypair {
 	pub fn diffie_hellman(&self, public_key: &PublicKey) -> SharedSecret {
 		let secret = self.secret.diffie_hellman(public_key.inner());
 		SharedSecret::from_shared_secret(secret)
-	}
-}
-
-#[cfg(feature = "b64")]
-impl fmt::Debug for Keypair {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("Keypair")
-			.field("secret", &self.to_b64())
-			.field("public", &self.public)
-			.finish()
 	}
 }
 
@@ -135,19 +103,86 @@ impl fmt::Debug for Keypair {
 	}
 }
 
+#[cfg(feature = "b64")]
+impl fmt::Debug for Keypair {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("Keypair")
+			.field("secret", &self.to_string())
+			.field("public", &self.public)
+			.finish()
+	}
+}
+
 // Display
 #[cfg(feature = "b64")]
 impl fmt::Display for Keypair {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.write_str(&self.to_b64())
+		base64::display::Base64Display::with_config(
+			&self.to_bytes(),
+			base64::URL_SAFE_NO_PAD
+		).fmt(f)
 	}
 }
 
 impl From<[u8; 32]> for Keypair {
 	fn from(bytes: [u8; 32]) -> Self {
-		Self::from_bytes(bytes)
+		Self::from_static_secret(
+			x::StaticSecret::from(bytes)
+		)
 	}
 }
 
-#[cfg(all(feature = "serde", feature = "b64"))]
-impl_serde!(Keypair, 43);
+impl TryFrom<&[u8]> for Keypair {
+	type Error = TryFromError;
+
+	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
+		<[u8; 32]>::try_from(v)
+			.map(Self::from)
+			.map_err(TryFromError::from_any)
+	}
+}
+
+#[cfg(feature = "b64")]
+impl crate::FromStr for Keypair {
+	type Err = DecodeError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		if s.len() != crate::calculate_b64_len(Self::LEN) {
+			return Err(DecodeError::InvalidLength)
+		}
+
+		let mut bytes = [0u8; Self::LEN];
+		base64::decode_config_slice(s, base64::URL_SAFE_NO_PAD, &mut bytes)
+			.map(|_| Self::from(bytes))
+			.map_err(DecodeError::inv_bytes)
+	}
+}
+
+#[cfg(all(feature = "b64", feature = "serde"))]
+mod impl_serde {
+
+	use super::*;
+
+	use std::borrow::Cow;
+	use std::str::FromStr;
+
+	use _serde::{Serialize, Serializer, Deserialize, Deserializer};
+	use _serde::de::Error;
+
+	impl Serialize for Keypair {
+		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S: Serializer {
+			serializer.collect_str(&self)
+		}
+	}
+
+	impl<'de> Deserialize<'de> for Keypair {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where D: Deserializer<'de> {
+			let s: Cow<'_, str> = Deserialize::deserialize(deserializer)?;
+			Self::from_str(s.as_ref())
+				.map_err(D::Error::custom)
+		}
+	}
+
+}

@@ -29,7 +29,10 @@ pub struct Key {
 impl Key {
 	/// Creates a new key.  
 	/// And modifying the shared_secret to be a uniformly random key.
-	pub(crate) fn new(shared_secret: [u8; 32], initial_nonce: [u8; 24]) -> Self {
+	pub(crate) fn new(
+		shared_secret: [u8; 32],
+		initial_nonce: [u8; 24]
+	) -> Self {
 		// is this really necessary See: https://github.com/RustCrypto/AEADs/pull/295
 		let shared_secret = hchacha::<chacha20::R20>(
 			shared_secret.as_ref().into(),
@@ -50,7 +53,11 @@ impl Key {
 
 	/// Decrypts data, returning an Error if the Mac's do not
 	/// match.
-	pub fn decrypt(&mut self, msg: &mut [u8], recv_mac: &Mac) -> Result<(), MacNotEqual> {
+	pub fn decrypt(
+		&mut self,
+		msg: &mut [u8],
+		recv_mac: &Mac
+	) -> Result<(), MacNotEqual> {
 		self.new_cipher().decrypt(msg, recv_mac)
 	}
 
@@ -102,7 +109,11 @@ pub struct SyncKey {
 impl SyncKey {
 	/// Creates a new key.  
 	/// And modifying the shared_secret to be a uniformly random key.
-	fn new(shared_secret: [u8; 32], initial_nonce: [u8; 24], count: u64) -> Self {
+	fn new(
+		shared_secret: [u8; 32],
+		initial_nonce: [u8; 24],
+		count: u64
+	) -> Self {
 		Self {
 			shared_secret,
 			initial_nonce,
@@ -118,7 +129,11 @@ impl SyncKey {
 
 	/// Decrypts data, returning an Error if the Mac's do not
 	/// match.
-	pub fn decrypt(&self, msg: &mut [u8], recv_mac: &Mac) -> Result<(), MacNotEqual> {
+	pub fn decrypt(
+		&self,
+		msg: &mut [u8],
+		recv_mac: &Mac
+	) -> Result<(), MacNotEqual> {
 		self.new_cipher().decrypt(msg, recv_mac)
 	}
 
@@ -173,12 +188,19 @@ struct Cipher {
 }
 
 impl Cipher {
-	fn new(shared_secret: &[u8; 32], initial_nonce: &[u8; 24], count: u64) -> Self {
+	fn new(
+		shared_secret: &[u8; 32],
+		initial_nonce: &[u8; 24],
+		count: u64
+	) -> Self {
 		// new chacha
 		let mut iv = initial_nonce.clone();
 		xor_nonce_with_u64(&mut iv, count);
 
-		let mut cipher = XChaCha20::new(shared_secret.into(), iv.as_ref().into());
+		let mut cipher = XChaCha20::new(
+			shared_secret.into(),
+			iv.as_ref().into()
+		);
 
 		// Derive Poly1305 key from the first 32-bytes of the ChaCha20 keystream
 		let mut mac_key = [0u8; 32];
@@ -201,7 +223,11 @@ impl Cipher {
 		self.poly.to_mac(msg.len())
 	}
 
-	fn decrypt(mut self, msg: &mut [u8], recv_mac: &Mac) -> Result<(), MacNotEqual> {
+	fn decrypt(
+		mut self,
+		msg: &mut [u8],
+		recv_mac: &Mac
+	) -> Result<(), MacNotEqual> {
 		self.poly.update_padded(msg);
 		let mac = self.poly.to_mac(msg.len());
 

@@ -1,7 +1,7 @@
 [package]
 name = "fire-crypto"
 description = "Crypto library providing encryption and signing."
-version = "0.2.3"
+version = "0.3.0"
 authors = ["Sören Meier <info@s-me.ch>"]
 repository = "https://github.com/fire-lib/fire-crypto"
 homepage = "https://fire-lib.com/"
@@ -26,11 +26,11 @@ hash = ["blake2", "generic-array"]
 
 [dependencies]
 #cipher
-zeroize = { version = "1.4", optional = true }
+zeroize = { version = "=1.3", optional = true }
 poly1305 = { version = "0.7", optional = true }
 universal-hash = { version = "0.4", optional = true }
 chacha20 = { version = "0.7", features = ["hchacha", "expose-core"], optional = true }
-x25519-dalek = { version = "1.1", optional = true }
+x25519-dalek = { version = "1.2", optional = true }
 
 #signature
 ed25519-dalek = { version = "1.0", optional = true }

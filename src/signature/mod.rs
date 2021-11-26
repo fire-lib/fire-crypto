@@ -17,15 +17,18 @@ mod tests {
 	use super::*;
 
 	#[cfg(feature = "b64")]
+	use std::str::FromStr;
+
+	#[cfg(feature = "b64")]
 	#[test]
 	pub fn b64() {
 		// keypair
 		let alice = Keypair::new();
 
-		let b64 = alice.to_b64();
-		let alice_2 = Keypair::from_b64(&b64).unwrap();
+		let b64 = alice.to_string();
+		let alice_2 = Keypair::from_str(&b64).unwrap();
 
-		assert_eq!(b64, alice_2.to_b64());
+		assert_eq!(b64, alice_2.to_string());
 	}
 
 	#[test]
@@ -47,9 +50,9 @@ mod tests {
 		let signature = alice.sign(msg);
 
 		// check b64 signature
-		let b64 = signature.to_b64();
+		let b64 = signature.to_string();
 
-		let signature_2 = Signature::from_b64(&b64).unwrap();
+		let signature_2 = Signature::from_str(&b64).unwrap();
 
 		assert_eq!(signature, signature_2);
 	}
@@ -57,13 +60,15 @@ mod tests {
 	#[cfg(feature = "b64")]
 	#[test]
 	pub fn static_keypair_and_signature_test() {
-		let alice = Keypair::from_b64("ZMIO9cdDRvhD6QXo9mR94REWV0810FRTXCkoG3mIO8k").unwrap();
+		let alice = Keypair::from_str("ZMIO9cdDRvhD6QXo9mR94REWV0810FRTXCkoG3mIO8k").unwrap();
 
 		let msg = b"Hey thats my message";
 
 		let signature = alice.sign(msg);
-		assert_eq!(signature.to_b64(), "f5Yg6kEyXCsJTssIlZY8msoGnIuf3tdGvpJclwArp75pA-5W0FQTj9E6Lz2345P0IekLsuK-mmDkfViPcqf_DA");
+		assert_eq!(signature.to_string(), "f5Yg6kEyXCsJTssIlZY8msoGnIuf3tdGvpJclwArp75pA-5W0FQTj9E6Lz2345P0IekLsuK-mmDkfViPcqf_DA");
 
 		assert!(alice.public().verify(msg, &signature));
 	}
+
+	// todo: add test to make sure From<[u8; S]> can not panic
 }

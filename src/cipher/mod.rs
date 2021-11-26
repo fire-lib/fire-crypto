@@ -69,6 +69,9 @@ mod tests {
 
 	use super::*;
 
+	#[cfg(feature = "b64")]
+	use std::str::FromStr;
+
 	#[test]
 	pub fn diffie_keypair() {
 		let alice = Keypair::new();
@@ -98,10 +101,10 @@ mod tests {
 	pub fn b64() {
 		let alice = Keypair::new();
 
-		let b64 = alice.to_b64();
-		let alice_2 = Keypair::from_b64(&b64).unwrap();
+		let b64 = alice.to_string();
+		let alice_2 = Keypair::from_str(&b64).unwrap();
 
-		assert_eq!(b64, alice_2.to_b64());
+		assert_eq!(b64, alice_2.to_string());
 	}
 
 	#[test]
@@ -154,8 +157,8 @@ mod tests {
 	#[cfg(feature = "b64")]
 	#[test]
 	pub fn static_encrypt_decrypt() {
-		let alice = Keypair::from_b64("4KbU6aVELDln5wCADIA53wBrldKuaoRFA4Pw0WB73XQ").unwrap();
-		let bob = Keypair::from_b64("WG1CTI9LGEtUZbLFI1glU-8jIsfh3VkzrUKrmUqeqU8").unwrap();
+		let alice = Keypair::from_str("4KbU6aVELDln5wCADIA53wBrldKuaoRFA4Pw0WB73XQ").unwrap();
+		let bob = Keypair::from_str("WG1CTI9LGEtUZbLFI1glU-8jIsfh3VkzrUKrmUqeqU8").unwrap();
 
 		let alice_ssk = alice.diffie_hellman(bob.public());
 		let bob_ssk = bob.diffie_hellman(alice.public());

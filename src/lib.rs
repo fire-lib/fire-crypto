@@ -3,8 +3,9 @@
 use rand::rngs::OsRng;
 use rand::RngCore;
 
-#[macro_use]
-mod macros;
+/// used internally when b64
+#[cfg(feature = "b64")]
+use std::str::FromStr;
 
 #[cfg(feature = "cipher")]
 pub mod cipher;
@@ -14,6 +15,10 @@ pub mod signature;
 
 #[cfg(feature = "hash")]
 pub mod hash;
+
+pub mod token;
+
+pub mod error;
 
 // from https://docs.rs/crate/chacha20/0.3.4/source/src/cipher.rs
 /// Xors two buffers. Both buffers need to have the same length.
@@ -33,17 +38,23 @@ pub fn fill_random(buf: &mut [u8]) {
 	OsRng.fill_bytes(buf)
 }
 
+/// todo replace when rust #88582 get's stabilized
+/// 
+/// Since this function multiplies s with 4
+/// s needs to be 1/4 of usize::MAX in practice this should not be a problem
+/// since the tokens won't be that long.
 #[cfg(feature = "b64")]
-#[derive(Debug, Clone)]
-pub enum FromBase64Error {
-	LengthNot32Bytes,
-	LengthNot64Bytes,
-	Base64(base64::DecodeError)
+#[inline(always)]
+const fn calculate_b64_len(s: usize) -> usize {
+	let s = 4 * s;
+
+	// following block is a div ceil
+	let mut d = s / 3;
+	let r = s % 3;
+	if r > 0 {
+		d += 1;
+	}
+
+	d
 }
 
-#[cfg(feature = "b64")]
-impl From<base64::DecodeError> for FromBase64Error {
-	fn from(e: base64::DecodeError) -> Self {
-		Self::Base64(e)
-	}
-}

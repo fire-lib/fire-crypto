@@ -1,8 +1,9 @@
+use crate::error::TryFromError;
 #[cfg(feature = "b64")]
-use crate::FromBase64Error;
+use crate::error::DecodeError;
 
 use std::{fmt, cmp};
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 use x25519_dalek as x;
 
@@ -26,46 +27,14 @@ impl PublicKey {
 		}
 	}
 
-	// pub(crate) fn empty_bytes() -> [u8; 32] {
-	// 	[0u8; 32]
-	// }
-
-	pub fn from_bytes(bytes: [u8; 32]) -> Self {
-		Self {
-			inner: bytes.into()
-		}
-	}
-
 	/// ## Panics
 	/// if the slice is not 32 bytes long.
 	pub fn from_slice(slice: &[u8]) -> Self {
-		Self::from_bytes(slice.try_into().unwrap())
-	}
-
-	pub fn try_from_slice(slice: &[u8]) -> Option<Self> {
-		slice.try_into().ok()
-			.map(Self::from_bytes)
+		slice.try_into().unwrap()
 	}
 
 	pub fn to_bytes(&self) -> [u8; 32] {
-		self.as_slice().try_into().unwrap()
-	}
-
-	pub fn as_slice(&self) -> &[u8] {
-		self.inner.as_bytes()
-	}
-
-	#[cfg(feature = "b64")]
-	pub fn from_b64<T: AsRef<[u8]>>(input: T) -> Result<Self, FromBase64Error> {
-		let b = base64::decode_config(input, base64::URL_SAFE_NO_PAD)?;
-		Self::try_from_slice(&b)
-			.ok_or(FromBase64Error::LengthNot32Bytes)
-	}
-
-	#[cfg(feature = "b64")]
-	pub fn to_b64(&self) -> String {
-		// returns 43 str
-		base64::encode_config(self.as_slice(), base64::URL_SAFE_NO_PAD)
+		self.as_ref().try_into().unwrap()
 	}
 
 	pub fn inner(&self) -> &x::PublicKey {
@@ -73,45 +42,110 @@ impl PublicKey {
 	}
 }
 
-#[cfg(feature = "b64")]
-impl fmt::Debug for PublicKey {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_tuple("PublicKey")
-			.field(&self.to_b64())
-			.finish()
-	}
-}
-
 #[cfg(not(feature = "b64"))]
 impl fmt::Debug for PublicKey {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_tuple("PublicKey")
-			.field(&self.as_slice())
+			.field(&self.as_ref())
 			.finish()
+	}
+}
+
+#[cfg(feature = "b64")]
+impl fmt::Debug for PublicKey {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_tuple("PublicKey")
+			.field(&self.to_string())
+			.finish()
+	}
+}
+
+#[cfg(feature = "b64")]
+impl fmt::Display for PublicKey {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		base64::display::Base64Display::with_config(
+			self.as_ref(),
+			base64::URL_SAFE_NO_PAD
+		).fmt(f)
 	}
 }
 
 impl From<[u8; 32]> for PublicKey {
 	fn from(bytes: [u8; 32]) -> Self {
-		Self::from_bytes(bytes)
+		Self {
+			inner: bytes.into()
+		}
+	}
+}
+
+impl TryFrom<&[u8]> for PublicKey {
+	type Error = TryFromError;
+
+	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
+		<[u8; 32]>::try_from(v)
+			.map_err(TryFromError::from_any)
+			.map(Self::from)
+	}
+}
+
+#[cfg(feature = "b64")]
+impl crate::FromStr for PublicKey {
+	type Err = DecodeError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		if s.len() != crate::calculate_b64_len(Self::LEN) {
+			return Err(DecodeError::InvalidLength)
+		}
+
+		let mut bytes = [0u8; Self::LEN];
+		base64::decode_config_slice(s, base64::URL_SAFE_NO_PAD, &mut bytes)
+			.map_err(DecodeError::inv_bytes)
+			.and_then(|_| {
+				Self::try_from(bytes.as_ref())
+					.map_err(DecodeError::inv_bytes)
+			})
+	}
+}
+
+impl AsRef<[u8]> for PublicKey {
+	fn as_ref(&self) -> &[u8] {
+		self.inner.as_bytes()
 	}
 }
 
 impl cmp::PartialEq for PublicKey {
 	fn eq(&self, other: &PublicKey) -> bool {
-		self.as_slice() == other.as_slice()
+		self.as_ref() == other.as_ref()
 	}
 }
 
 impl cmp::Eq for PublicKey {}
 
-// Display
-#[cfg(feature = "b64")]
-impl fmt::Display for PublicKey {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.write_str(&self.to_b64())
-	}
-}
+#[cfg(all(feature = "b64", feature = "serde"))]
+mod impl_serde {
 
-#[cfg(all(feature = "serde", feature = "b64"))]
-impl_serde!(PublicKey, 43);
+	use super::*;
+
+	use std::borrow::Cow;
+	use std::str::FromStr;
+
+	use _serde::{Serialize, Serializer, Deserialize, Deserializer};
+	use _serde::de::Error;
+
+	impl Serialize for PublicKey {
+		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where S: Serializer {
+			serializer.collect_str(&self)
+		}
+	}
+
+	impl<'de> Deserialize<'de> for PublicKey {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where D: Deserializer<'de> {
+			let s: Cow<'_, str> = Deserialize::deserialize(deserializer)?;
+			Self::from_str(s.as_ref())
+				.map_err(D::Error::custom)
+		}
+	}
+
+}
