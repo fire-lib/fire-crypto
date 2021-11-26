@@ -34,8 +34,8 @@ impl PublicKey {
 		self.inner.to_bytes()
 	}
 
-	pub fn verify(&self, msg: &[u8], signature: &Signature) -> bool {
-		self.inner.verify_strict(msg, signature.inner()).is_ok()
+	pub fn verify(&self, msg: impl AsRef<[u8]>, signature: &Signature) -> bool {
+		self.inner.verify_strict(msg.as_ref(), signature.inner()).is_ok()
 	}
 }
 

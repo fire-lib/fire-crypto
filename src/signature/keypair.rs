@@ -48,13 +48,13 @@ impl Keypair {
 		&self.public
 	}
 
-	pub fn sign(&self, msg: &[u8]) -> Signature {
+	pub fn sign(&self, msg: impl AsRef<[u8]>) -> Signature {
 		let expanded: ed::ExpandedSecretKey = (&self.secret).into();
-		let sign = expanded.sign(msg, self.public().inner());
+		let sign = expanded.sign(msg.as_ref(), self.public().inner());
 		Signature::from_sign(sign)
 	}
 
-	pub fn verify(&self, msg: &[u8], signature: &Signature) -> bool {
+	pub fn verify(&self, msg: impl AsRef<[u8]>, signature: &Signature) -> bool {
 		self.public.verify(msg, signature)
 	}
 }
