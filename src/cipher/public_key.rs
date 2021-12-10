@@ -4,6 +4,7 @@ use crate::error::DecodeError;
 
 use std::{fmt, cmp};
 use std::convert::{TryFrom, TryInto};
+use std::hash::{Hash, Hasher};
 
 use x25519_dalek as x;
 
@@ -70,6 +71,20 @@ impl fmt::Display for PublicKey {
 	}
 }
 
+impl cmp::PartialEq for PublicKey {
+	fn eq(&self, other: &PublicKey) -> bool {
+		self.as_ref() == other.as_ref()
+	}
+}
+
+impl cmp::Eq for PublicKey {}
+
+impl Hash for PublicKey {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.as_ref().hash(state)
+	}
+}
+
 impl From<[u8; 32]> for PublicKey {
 	fn from(bytes: [u8; 32]) -> Self {
 		Self {
@@ -112,14 +127,6 @@ impl AsRef<[u8]> for PublicKey {
 		self.inner.as_bytes()
 	}
 }
-
-impl cmp::PartialEq for PublicKey {
-	fn eq(&self, other: &PublicKey) -> bool {
-		self.as_ref() == other.as_ref()
-	}
-}
-
-impl cmp::Eq for PublicKey {}
 
 #[cfg(all(feature = "b64", feature = "serde"))]
 mod impl_serde {

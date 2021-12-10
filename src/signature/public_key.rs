@@ -7,6 +7,7 @@ use ed25519_dalek as ed;
 
 use std::fmt;
 use std::convert::{TryFrom, TryInto};
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct PublicKey {
@@ -64,6 +65,12 @@ impl fmt::Display for PublicKey {
 			self.as_ref(),
 			base64::URL_SAFE_NO_PAD
 		).fmt(f)
+	}
+}
+
+impl Hash for PublicKey {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.as_ref().hash(state)
 	}
 }
 
