@@ -8,10 +8,11 @@ use std::fmt;
 use zeroize::Zeroize;
 
 use chacha20::{hchacha, XChaCha20};
-use chacha20::cipher::{NewCipher, StreamCipher, StreamCipherSeek};
+use chacha20::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
+use chacha20::cipher::typenum::U10;
 
 use poly1305::Poly1305;
-use universal_hash::{NewUniversalHash, UniversalHash};
+use universal_hash::{KeyInit, UniversalHash};
 
 use generic_array::GenericArray;
 
@@ -34,7 +35,7 @@ impl Key {
 		initial_nonce: [u8; 24]
 	) -> Self {
 		// is this really necessary See: https://github.com/RustCrypto/AEADs/pull/295
-		let shared_secret = hchacha::<chacha20::R20>(
+		let shared_secret = hchacha::<U10>(
 			shared_secret.as_ref().into(),
 			&GenericArray::default()
 		).into();

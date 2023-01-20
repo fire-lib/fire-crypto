@@ -3,9 +3,6 @@ use crate::error::TryFromError;
 use std::fmt;
 use std::convert::{TryFrom, TryInto};
 
-use generic_array::{GenericArray, typenum};
-use typenum::{U16};
-
 use poly1305::Tag;
 
 // Tag is an universal_hash::Output which provides a `Eq` implementation with
@@ -33,7 +30,7 @@ impl Mac {
 	}
 
 	pub fn into_bytes(self) -> [u8; 16] {
-		self.tag.into_bytes().into()
+		self.tag.into()
 	}
 }
 
@@ -47,9 +44,7 @@ impl From<[u8; 16]> for Mac {
 	/// This function should only be used with bytes that
 	/// were received with a message.
 	fn from(bytes: [u8; 16]) -> Self {
-		let gen: GenericArray<u8, U16> = bytes.into();
-
-		Self { tag: Tag::new(gen) }
+		Self { tag: bytes.into() }
 	}
 }
 
