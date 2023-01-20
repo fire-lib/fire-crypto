@@ -36,7 +36,7 @@ x25519-dalek = { version = "1.2", optional = true }
 ed25519-dalek = { version = "1.0", optional = true }
 
 #hash
-blake2 = { version = "0.9", optional = true }
+blake2 = { version = "0.10", optional = true }
 
 # still needing 0.7 because of https://github.com/dalek-cryptography/x25519-dalek/pull/64
 rand = "0.7"

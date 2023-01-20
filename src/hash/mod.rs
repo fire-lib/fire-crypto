@@ -14,7 +14,7 @@ use std::{fmt, ptr};
 use std::convert::{TryFrom, TryInto};
 use std::mem::ManuallyDrop;
 
-use blake2::{Blake2b, Digest};
+use blake2::{Blake2b512, Digest};
 use generic_array::{GenericArray, typenum::U64};
 
 #[cfg(feature = "b64")]
@@ -26,13 +26,13 @@ pub fn hash(data: impl AsRef<[u8]>) -> Hash {
 }
 
 pub struct Hasher {
-	inner: Blake2b
+	inner: Blake2b512
 }
 
 impl Hasher {
 	pub fn new() -> Self {
 		Self {
-			inner: Blake2b::new()
+			inner: Blake2b512::new()
 		}
 	}
 
