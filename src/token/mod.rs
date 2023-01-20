@@ -8,6 +8,10 @@ use std::convert::{TryFrom, TryInto};
 use rand::rngs::OsRng;
 use rand::RngCore;
 
+#[cfg(feature = "b64")]
+use base64::Engine;
+#[cfg(feature = "b64")]
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
 /// A random Token
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -16,7 +20,6 @@ pub struct Token<const S: usize> {
 }
 
 impl<const S: usize> Token<S> {
-
 	pub const LEN: usize = S;
 
 	pub const STR_LEN: usize = crate::calculate_b64_len(S);
@@ -39,7 +42,6 @@ impl<const S: usize> Token<S> {
 	pub fn to_bytes(&self) -> [u8; S] {
 		self.bytes
 	}
-
 }
 
 #[cfg(not(feature = "b64"))]
@@ -63,9 +65,9 @@ impl<const S: usize> fmt::Debug for Token<S> {
 #[cfg(feature = "b64")]
 impl<const S: usize> fmt::Display for Token<S> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		base64::display::Base64Display::with_config(
+		base64::display::Base64Display::new(
 			self.as_ref(),
-			base64::URL_SAFE_NO_PAD
+			&URL_SAFE_NO_PAD
 		).fmt(f)
 	}
 }
@@ -96,7 +98,7 @@ impl<const S: usize> crate::FromStr for Token<S> {
 		}
 
 		let mut bytes = [0u8; S];
-		base64::decode_config_slice(s, base64::URL_SAFE_NO_PAD, &mut bytes)
+		URL_SAFE_NO_PAD.decode_slice_unchecked(s, &mut bytes)
 			.map_err(DecodeError::inv_bytes)
 			.map(|_| Self::from(bytes))
 	}
@@ -137,15 +139,13 @@ mod impl_serde {
 
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "b64"))]
 mod tests {
 
 	use super::*;
 
-	#[cfg(feature = "b64")]
 	use std::str::FromStr;
 
-	#[cfg(feature = "b64")]
 	pub fn b64<const S: usize>() {
 		let tok = Token::<S>::new();
 
@@ -155,7 +155,7 @@ mod tests {
 		assert_eq!(b64, tok_2.to_string());
 	}
 
-	#[cfg(feature = "b64")]
+	
 	#[test]
 	pub fn test_b64() {
 		b64::<1>();
@@ -166,5 +166,4 @@ mod tests {
 		b64::<200>();
 		b64::<213>();
 	}
-
 }

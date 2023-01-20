@@ -65,6 +65,7 @@ pub struct MacNotEqual;
 // TESTS
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
 
 	use super::*;

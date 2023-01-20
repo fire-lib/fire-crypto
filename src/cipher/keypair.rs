@@ -10,6 +10,9 @@ use rand::rngs::OsRng;
 
 use x25519_dalek as x;
 
+#[cfg(feature = "b64")]
+use base64::engine::{Engine, general_purpose::URL_SAFE_NO_PAD};
+
 // EphemeralKeypair
 
 /// A Keypair that can only be used once.
@@ -117,9 +120,9 @@ impl fmt::Debug for Keypair {
 #[cfg(feature = "b64")]
 impl fmt::Display for Keypair {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		base64::display::Base64Display::with_config(
+		base64::display::Base64Display::new(
 			&self.to_bytes(),
-			base64::URL_SAFE_NO_PAD
+			&URL_SAFE_NO_PAD
 		).fmt(f)
 	}
 }
@@ -152,7 +155,7 @@ impl crate::FromStr for Keypair {
 		}
 
 		let mut bytes = [0u8; Self::LEN];
-		base64::decode_config_slice(s, base64::URL_SAFE_NO_PAD, &mut bytes)
+		URL_SAFE_NO_PAD.decode_slice_unchecked(s, &mut bytes)
 			.map(|_| Self::from(bytes))
 			.map_err(DecodeError::inv_bytes)
 	}

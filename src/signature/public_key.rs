@@ -9,6 +9,10 @@ use std::fmt;
 use std::convert::{TryFrom, TryInto};
 use std::hash::{Hash, Hasher};
 
+#[cfg(feature = "b64")]
+use base64::engine::{Engine, general_purpose::URL_SAFE_NO_PAD};
+
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct PublicKey {
 	inner: ed::PublicKey
@@ -61,9 +65,9 @@ impl fmt::Debug for PublicKey {
 #[cfg(feature = "b64")]
 impl fmt::Display for PublicKey {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		base64::display::Base64Display::with_config(
+		base64::display::Base64Display::new(
 			self.as_ref(),
-			base64::URL_SAFE_NO_PAD
+			&URL_SAFE_NO_PAD
 		).fmt(f)
 	}
 }
@@ -94,7 +98,7 @@ impl crate::FromStr for PublicKey {
 		}
 
 		let mut bytes = [0u8; Self::LEN];
-		base64::decode_config_slice(s, base64::URL_SAFE_NO_PAD, &mut bytes)
+		URL_SAFE_NO_PAD.decode_slice_unchecked(s, &mut bytes)
 			.map_err(DecodeError::inv_bytes)
 			.and_then(|_| {
 				Self::try_from(bytes.as_ref())
