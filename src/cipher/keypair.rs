@@ -23,7 +23,7 @@ pub struct EphemeralKeypair {
 
 impl EphemeralKeypair {
 	pub fn new() -> Self {
-		let secret = x::EphemeralSecret::new(&mut OsRng);
+		let secret = x::EphemeralSecret::random_from_rng(OsRng);
 		let public = PublicKey::from_ephemeral_secret(&secret);
 
 		Self { secret, public }
@@ -68,7 +68,7 @@ impl Keypair {
 
 	pub fn new() -> Self {
 		Self::from_static_secret(
-			x::StaticSecret::new(&mut OsRng)
+			x::StaticSecret::random_from_rng(OsRng)
 		)
 	}
 
@@ -163,7 +163,6 @@ impl crate::FromStr for Keypair {
 
 #[cfg(all(feature = "b64", feature = "serde"))]
 mod impl_serde {
-
 	use super::*;
 
 	use std::borrow::Cow;
@@ -187,5 +186,4 @@ mod impl_serde {
 				.map_err(D::Error::custom)
 		}
 	}
-
 }

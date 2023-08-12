@@ -42,7 +42,7 @@ impl Signature {
 impl fmt::Debug for Signature {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_tuple("Signature")
-			.field(&self.as_ref())
+			.field(&self.to_bytes())
 			.finish()
 	}
 }
@@ -60,7 +60,7 @@ impl fmt::Debug for Signature {
 impl fmt::Display for Signature {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		base64::display::Base64Display::new(
-			self.as_ref(),
+			&self.to_bytes(),
 			&URL_SAFE_NO_PAD
 		).fmt(f)
 	}
@@ -70,7 +70,7 @@ impl TryFrom<&[u8]> for Signature {
 	type Error = TryFromError;
 
 	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
-		ed::Signature::from_bytes(v)
+		ed::Signature::try_from(v)
 			.map_err(TryFromError::from_any)
 			.map(Self::from_sign)
 	}
@@ -92,12 +92,6 @@ impl crate::FromStr for Signature {
 				Self::try_from(bytes.as_ref())
 					.map_err(DecodeError::inv_bytes)
 			})
-	}
-}
-
-impl AsRef<[u8]> for Signature {
-	fn as_ref(&self) -> &[u8] {
-		self.inner.as_ref()
 	}
 }
 

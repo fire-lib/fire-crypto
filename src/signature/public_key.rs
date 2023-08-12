@@ -14,19 +14,23 @@ use base64::engine::{Engine, general_purpose::URL_SAFE_NO_PAD};
 
 
 #[derive(Clone, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct PublicKey {
-	inner: ed::PublicKey
+	inner: ed::VerifyingKey
 }
 
 impl PublicKey {
 	pub const LEN: usize = 32;
 
-	pub(crate) fn from_raw(inner: ed::PublicKey) -> Self {
-		Self { inner }
+	pub(crate) fn from_ref(inner: &ed::VerifyingKey) -> &Self {
+		// This is safe because PublicKey is transparent
+		unsafe {
+			&*(inner as *const _ as *const _)
+		}
 	}
 
-	pub(crate) fn inner(&self) -> &ed::PublicKey {
-		&self.inner
+	pub(crate) fn from_raw(inner: ed::VerifyingKey) -> Self {
+		Self { inner }
 	}
 
 	/// ## Panics
@@ -82,7 +86,7 @@ impl TryFrom<&[u8]> for PublicKey {
 	type Error = TryFromError;
 
 	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
-		ed::PublicKey::from_bytes(v)
+		ed::VerifyingKey::try_from(v)
 			.map_err(TryFromError::from_any)
 			.map(Self::from_raw)
 	}

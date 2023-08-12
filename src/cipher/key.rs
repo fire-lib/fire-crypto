@@ -195,7 +195,7 @@ impl Cipher {
 		count: u64
 	) -> Self {
 		// new chacha
-		let mut iv = initial_nonce.clone();
+		let mut iv = *initial_nonce;
 		xor_nonce_with_u64(&mut iv, count);
 
 		let mut cipher = XChaCha20::new(

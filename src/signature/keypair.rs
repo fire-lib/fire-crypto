@@ -9,33 +9,31 @@ use std::convert::{TryFrom, TryInto};
 use rand::rngs::OsRng;
 
 use ed25519_dalek as ed;
+use ed::Signer;
 
 #[cfg(feature = "b64")]
 use base64::engine::{Engine, general_purpose::URL_SAFE_NO_PAD};
 
 
 pub struct Keypair {
-	secret: ed::SecretKey,
-	public: PublicKey
+	secret: ed::SigningKey
 }
 
 impl Keypair {
 	pub const LEN: usize = 32;
 
 	pub fn new() -> Self {
-		Self::from_keypair(ed::Keypair::generate(&mut OsRng))
+		Self::from_keypair(ed::SigningKey::generate(&mut OsRng))
 	}
 
-	pub(crate) fn from_keypair(keypair: ed::Keypair) -> Self {
+	pub(crate) fn from_keypair(keypair: ed::SigningKey) -> Self {
 		Self {
-			secret: keypair.secret,
-			public: PublicKey::from_raw(keypair.public)
+			secret: keypair
 		}
 	}
 
 	pub(crate) fn from_secret(secret: ed::SecretKey) -> Self {
-		let public = PublicKey::from_raw(ed::PublicKey::from(&secret));
-		Self { secret, public }
+		Self::from_keypair(ed::SigningKey::from_bytes(&secret))
 	}
 
 	/// ## Panics
@@ -49,17 +47,16 @@ impl Keypair {
 	}
 
 	pub fn public(&self) -> &PublicKey {
-		&self.public
+		PublicKey::from_ref(self.secret.as_ref())
 	}
 
 	pub fn sign(&self, msg: impl AsRef<[u8]>) -> Signature {
-		let expanded: ed::ExpandedSecretKey = (&self.secret).into();
-		let sign = expanded.sign(msg.as_ref(), self.public().inner());
+		let sign = self.secret.sign(msg.as_ref());
 		Signature::from_sign(sign)
 	}
 
 	pub fn verify(&self, msg: impl AsRef<[u8]>, signature: &Signature) -> bool {
-		self.public.verify(msg, signature)
+		self.public().verify(msg, signature)
 	}
 }
 
@@ -67,8 +64,8 @@ impl Keypair {
 impl fmt::Debug for Keypair {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("Keypair")
-			.field("secret", &self.as_ref())
-			.field("public", &self.public)
+			.field("secret", &self.to_bytes())
+			.field("public", self.public())
 			.finish()
 	}
 }
@@ -78,7 +75,7 @@ impl fmt::Debug for Keypair {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("Keypair")
 			.field("secret", &self.to_string())
-			.field("public", &self.public)
+			.field("public", self.public())
 			.finish()
 	}
 }
@@ -87,7 +84,7 @@ impl fmt::Debug for Keypair {
 impl fmt::Display for Keypair {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		base64::display::Base64Display::new(
-			self.as_ref(),
+			&self.to_bytes(),
 			&URL_SAFE_NO_PAD
 		).fmt(f)
 	}
@@ -97,9 +94,15 @@ impl TryFrom<&[u8]> for Keypair {
 	type Error = TryFromError;
 
 	fn try_from(v: &[u8]) -> Result<Self, Self::Error> {
-		ed::SecretKey::from_bytes(v)
+		ed::SecretKey::try_from(v)
 			.map_err(TryFromError::from_any)
 			.map(Self::from_secret)
+	}
+}
+
+impl From<[u8; 32]> for Keypair {
+	fn from(bytes: [u8; 32]) -> Self {
+		Self::from_secret(bytes)
 	}
 }
 
@@ -122,15 +125,16 @@ impl crate::FromStr for Keypair {
 	}
 }
 
-impl AsRef<[u8]> for Keypair {
-	fn as_ref(&self) -> &[u8] {
-		self.secret.as_bytes()
-	}
-}
+// todo add again
+// impl AsRef<[u8]> for Keypair {
+// 	fn as_ref(&self) -> &[u8] {
+// 		self.secret.as_bytes()
+// 	}
+// }
 
 impl Clone for Keypair {
 	fn clone(&self) -> Self {
-		self.as_ref().try_into().unwrap()
+		self.to_bytes().into()
 	}
 }
 
