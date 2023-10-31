@@ -112,7 +112,6 @@ impl<const S: usize> AsRef<[u8]> for Token<S> {
 
 #[cfg(all(feature = "b64", feature = "serde"))]
 mod impl_serde {
-
 	use super::*;
 
 	use std::borrow::Cow;
@@ -136,7 +135,61 @@ mod impl_serde {
 				.map_err(D::Error::custom)
 		}
 	}
+}
 
+#[cfg(feature = "protobuf")]
+mod protobuf {
+	use super::*;
+
+	use fire_protobuf::{
+		WireType,
+		encode::{
+			EncodeMessage, MessageEncoder, FieldOpt, SizeBuilder, EncodeError
+		},
+		decode::{DecodeMessage, FieldKind, DecodeError},
+		bytes::BytesWrite
+	};
+
+	impl<const SI: usize> EncodeMessage for Token<SI> {
+		const WIRE_TYPE: WireType = WireType::Len;
+
+		fn is_default(&self) -> bool {
+			false
+		}
+
+		fn encoded_size(
+			&mut self,
+			field: Option<FieldOpt>,
+			builder: &mut SizeBuilder
+		) -> Result<(), EncodeError> {
+			self.bytes.encoded_size(field, builder)
+		}
+
+		fn encode<B>(
+			&mut self,
+			field: Option<FieldOpt>,
+			encoder: &mut MessageEncoder<B>
+		) -> Result<(), EncodeError>
+		where B: BytesWrite {
+			self.bytes.encode(field, encoder)
+		}
+	}
+
+	impl<'m, const SI: usize> DecodeMessage<'m> for Token<SI> {
+		const WIRE_TYPE: WireType = WireType::Len;
+
+		fn decode_default() -> Self {
+			[0; SI].into()
+		}
+
+		fn merge(
+			&mut self,
+			kind: FieldKind<'m>,
+			is_field: bool
+		) -> Result<(), DecodeError> {
+			self.bytes.merge(kind, is_field)
+		}
+	}
 }
 
 #[cfg(all(test, feature = "b64"))]
