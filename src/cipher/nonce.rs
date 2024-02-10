@@ -1,11 +1,11 @@
-use crate::fill_random;
 use crate::error::TryFromError;
+use crate::fill_random;
 
 use std::convert::{TryFrom, TryInto};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Nonce {
-	bytes: [u8; 24]
+	bytes: [u8; 24],
 }
 
 impl Nonce {
@@ -49,7 +49,6 @@ impl Nonce {
 		let n = Nonce::new();
 		std::mem::replace(self, n)
 	}
-
 }
 
 impl From<[u8; 24]> for Nonce {

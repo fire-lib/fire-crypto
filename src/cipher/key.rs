@@ -1,5 +1,5 @@
-use crate::xor;
 use super::{Mac, MacNotEqual};
+use crate::xor;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -7,9 +7,9 @@ use std::fmt;
 
 use zeroize::Zeroize;
 
-use chacha20::{hchacha, XChaCha20};
-use chacha20::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
 use chacha20::cipher::typenum::U10;
+use chacha20::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
+use chacha20::{hchacha, XChaCha20};
 
 use poly1305::Poly1305;
 use universal_hash::{KeyInit, UniversalHash};
@@ -24,7 +24,7 @@ const BLOCK_SIZE: u64 = 64;
 pub struct Key {
 	shared_secret: [u8; 32],
 	initial_nonce: [u8; 24],
-	count: u64
+	count: u64,
 }
 
 impl Key {
@@ -32,18 +32,19 @@ impl Key {
 	/// And modifying the shared_secret to be a uniformly random key.
 	pub(crate) fn new(
 		shared_secret: [u8; 32],
-		initial_nonce: [u8; 24]
+		initial_nonce: [u8; 24],
 	) -> Self {
 		// is this really necessary See: https://github.com/RustCrypto/AEADs/pull/295
 		let shared_secret = hchacha::<U10>(
 			shared_secret.as_ref().into(),
-			&GenericArray::default()
-		).into();
+			&GenericArray::default(),
+		)
+		.into();
 
 		Self {
 			shared_secret,
 			initial_nonce,
-			count: 0
+			count: 0,
 		}
 	}
 
@@ -57,7 +58,7 @@ impl Key {
 	pub fn decrypt(
 		&mut self,
 		msg: &mut [u8],
-		recv_mac: &Mac
+		recv_mac: &Mac,
 	) -> Result<(), MacNotEqual> {
 		self.new_cipher().decrypt(msg, recv_mac)
 	}
@@ -81,7 +82,7 @@ impl Key {
 		Self {
 			shared_secret: self.shared_secret,
 			initial_nonce: self.initial_nonce,
-			count: self.count
+			count: self.count,
 		}
 	}
 }
@@ -104,7 +105,7 @@ impl Drop for Key {
 pub struct SyncKey {
 	shared_secret: [u8; 32],
 	initial_nonce: [u8; 24],
-	count: AtomicU64
+	count: AtomicU64,
 }
 
 impl SyncKey {
@@ -113,13 +114,13 @@ impl SyncKey {
 	fn new(
 		shared_secret: [u8; 32],
 		initial_nonce: [u8; 24],
-		count: u64
+		count: u64,
 	) -> Self {
 		Self {
 			shared_secret,
 			initial_nonce,
 			// + 1 since the values that will be used are before adding
-			count: AtomicU64::new(count + 1)
+			count: AtomicU64::new(count + 1),
 		}
 	}
 
@@ -133,7 +134,7 @@ impl SyncKey {
 	pub fn decrypt(
 		&self,
 		msg: &mut [u8],
-		recv_mac: &Mac
+		recv_mac: &Mac,
 	) -> Result<(), MacNotEqual> {
 		self.new_cipher().decrypt(msg, recv_mac)
 	}
@@ -144,7 +145,7 @@ impl SyncKey {
 			&self.shared_secret,
 			&self.initial_nonce,
 			// relaxed since we only need to guarantee a number get's used once.
-			self.count.fetch_add(1, Ordering::Relaxed)
+			self.count.fetch_add(1, Ordering::Relaxed),
 		)
 	}
 }
@@ -185,23 +186,21 @@ fn xor_nonce_with_u64(nonce: &mut [u8; 24], count: u64) {
 
 struct Cipher {
 	cipher: XChaCha20,
-	poly: Poly1305
+	poly: Poly1305,
 }
 
 impl Cipher {
 	fn new(
 		shared_secret: &[u8; 32],
 		initial_nonce: &[u8; 24],
-		count: u64
+		count: u64,
 	) -> Self {
 		// new chacha
 		let mut iv = *initial_nonce;
 		xor_nonce_with_u64(&mut iv, count);
 
-		let mut cipher = XChaCha20::new(
-			shared_secret.into(),
-			iv.as_ref().into()
-		);
+		let mut cipher =
+			XChaCha20::new(shared_secret.into(), iv.as_ref().into());
 
 		// Derive Poly1305 key from the first 32-bytes of the ChaCha20 keystream
 		let mut mac_key = [0u8; 32];
@@ -227,7 +226,7 @@ impl Cipher {
 	fn decrypt(
 		mut self,
 		msg: &mut [u8],
-		recv_mac: &Mac
+		recv_mac: &Mac,
 	) -> Result<(), MacNotEqual> {
 		self.poly.update_padded(msg);
 		let mac = self.poly.to_mac(msg.len());

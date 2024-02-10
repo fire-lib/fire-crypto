@@ -6,33 +6,32 @@
 //! use any salt, it is vulnerable to a rainbow table
 //! attack.
 
-use crate::error::TryFromError;
 #[cfg(feature = "b64")]
 use crate::error::DecodeError;
+use crate::error::TryFromError;
 
-use std::{fmt, ptr};
 use std::convert::{TryFrom, TryInto};
 use std::mem::ManuallyDrop;
+use std::{fmt, ptr};
 
 use blake2::{Blake2b512, Digest};
-use generic_array::{GenericArray, typenum::U64};
+use generic_array::{typenum::U64, GenericArray};
 
 #[cfg(feature = "b64")]
-use base64::engine::{Engine, general_purpose::URL_SAFE_NO_PAD};
-
+use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
 
 pub fn hash(data: impl AsRef<[u8]>) -> Hash {
 	Hasher::hash(data)
 }
 
 pub struct Hasher {
-	inner: Blake2b512
+	inner: Blake2b512,
 }
 
 impl Hasher {
 	pub fn new() -> Self {
 		Self {
-			inner: Blake2b512::new()
+			inner: Blake2b512::new(),
 		}
 	}
 
@@ -43,7 +42,7 @@ impl Hasher {
 	pub fn finalize(self) -> Hash {
 		let arr = self.inner.finalize();
 		Hash {
-			bytes: convert_generic_array(arr)
+			bytes: convert_generic_array(arr),
 		}
 	}
 
@@ -66,7 +65,7 @@ fn convert_generic_array<T>(arr: GenericArray<T, U64>) -> [T; 64] {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Hash {
-	bytes: [u8; 64]
+	bytes: [u8; 64],
 }
 
 impl Hash {
@@ -86,28 +85,22 @@ impl Hash {
 #[cfg(not(feature = "b64"))]
 impl fmt::Debug for Hash {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_tuple("Hash")
-			.field(&self.as_ref())
-			.finish()
+		f.debug_tuple("Hash").field(&self.as_ref()).finish()
 	}
 }
 
 #[cfg(feature = "b64")]
 impl fmt::Debug for Hash {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_tuple("Hash")
-			.field(&self.to_string())
-			.finish()
+		f.debug_tuple("Hash").field(&self.to_string()).finish()
 	}
 }
 
 #[cfg(feature = "b64")]
 impl fmt::Display for Hash {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		base64::display::Base64Display::new(
-			self.as_ref(),
-			&URL_SAFE_NO_PAD
-		).fmt(f)
+		base64::display::Base64Display::new(self.as_ref(), &URL_SAFE_NO_PAD)
+			.fmt(f)
 	}
 }
 
@@ -133,15 +126,15 @@ impl crate::FromStr for Hash {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		if s.len() != crate::calculate_b64_len(Self::LEN) {
-			return Err(DecodeError::InvalidLength)
+			return Err(DecodeError::InvalidLength);
 		}
 
 		let mut bytes = [0u8; Self::LEN];
-		URL_SAFE_NO_PAD.decode_slice_unchecked(s, &mut bytes)
+		URL_SAFE_NO_PAD
+			.decode_slice_unchecked(s, &mut bytes)
 			.map_err(DecodeError::inv_bytes)
 			.and_then(|_| {
-				Self::try_from(bytes.as_ref())
-					.map_err(DecodeError::inv_bytes)
+				Self::try_from(bytes.as_ref()).map_err(DecodeError::inv_bytes)
 			})
 	}
 }
@@ -160,25 +153,27 @@ mod impl_serde {
 	use std::borrow::Cow;
 	use std::str::FromStr;
 
-	use _serde::{Serialize, Serializer, Deserialize, Deserializer};
 	use _serde::de::Error;
+	use _serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 	impl Serialize for Hash {
 		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S: Serializer {
+		where
+			S: Serializer,
+		{
 			serializer.collect_str(&self)
 		}
 	}
 
 	impl<'de> Deserialize<'de> for Hash {
 		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-		where D: Deserializer<'de> {
+		where
+			D: Deserializer<'de>,
+		{
 			let s: Cow<'_, str> = Deserialize::deserialize(deserializer)?;
-			Self::from_str(s.as_ref())
-				.map_err(D::Error::custom)
+			Self::from_str(s.as_ref()).map_err(D::Error::custom)
 		}
 	}
-
 }
 
 #[cfg(test)]
@@ -188,36 +183,31 @@ mod tests {
 
 	#[test]
 	fn hash_something() {
-
 		let bytes: Vec<u8> = (0..=255).collect();
 
 		let hash = Hasher::hash(bytes);
 
 		let hash_bytes = [
-			30, 204, 137, 111, 52, 211, 249, 202,
-			196, 132, 199, 63, 117, 246, 165, 251,
-			88, 238, 103, 132, 190, 65, 179, 95,
-			70, 6, 123, 156, 101, 198, 58, 103,
-			148, 211, 215, 68, 17, 44, 101, 63,
-			115, 221, 125, 235, 102, 102, 32, 76,
-			90, 155, 250, 91, 70, 8, 31, 193,
-			15, 219, 231, 136, 79, 165, 203, 248
+			30, 204, 137, 111, 52, 211, 249, 202, 196, 132, 199, 63, 117, 246,
+			165, 251, 88, 238, 103, 132, 190, 65, 179, 95, 70, 6, 123, 156,
+			101, 198, 58, 103, 148, 211, 215, 68, 17, 44, 101, 63, 115, 221,
+			125, 235, 102, 102, 32, 76, 90, 155, 250, 91, 70, 8, 31, 193, 15,
+			219, 231, 136, 79, 165, 203, 248,
 		];
 		assert_eq!(hash.to_bytes(), hash_bytes);
-
 	}
 
 	#[test]
 	#[cfg(feature = "b64")]
 	fn hash_b64() {
-
 		let bytes: Vec<u8> = (0..=255).collect();
 
 		let hash = Hasher::hash(bytes);
 
-		assert_eq!(hash.to_string(), "HsyJbzTT-crEhMc_dfal-1juZ4S-QbNfRgZ7nGXGOme\
-			U09dEESxlP3PdfetmZiBMWpv6W0YIH8EP2-eIT6XL-A");
-
+		assert_eq!(
+			hash.to_string(),
+			"HsyJbzTT-crEhMc_dfal-1juZ4S-QbNfRgZ7nGXGOme\
+			U09dEESxlP3PdfetmZiBMWpv6W0YIH8EP2-eIT6XL-A"
+		);
 	}
-
 }

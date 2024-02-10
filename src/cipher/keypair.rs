@@ -1,24 +1,24 @@
 use super::{PublicKey, SharedSecret};
-use crate::error::TryFromError;
 #[cfg(feature = "b64")]
 use crate::error::DecodeError;
+use crate::error::TryFromError;
 
-use std::fmt;
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 
 use rand::rngs::OsRng;
 
 use x25519_dalek as x;
 
 #[cfg(feature = "b64")]
-use base64::engine::{Engine, general_purpose::URL_SAFE_NO_PAD};
+use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
 
 // EphemeralKeypair
 
 /// A Keypair that can only be used once.
 pub struct EphemeralKeypair {
 	secret: x::EphemeralSecret,
-	public: PublicKey
+	public: PublicKey,
 }
 
 impl EphemeralKeypair {
@@ -54,7 +54,7 @@ impl fmt::Debug for EphemeralKeypair {
 #[derive(Clone)]
 pub struct Keypair {
 	pub secret: x::StaticSecret,
-	pub public: PublicKey
+	pub public: PublicKey,
 }
 
 impl Keypair {
@@ -67,9 +67,7 @@ impl Keypair {
 	}
 
 	pub fn new() -> Self {
-		Self::from_static_secret(
-			x::StaticSecret::random_from_rng(OsRng)
-		)
+		Self::from_static_secret(x::StaticSecret::random_from_rng(OsRng))
 	}
 
 	/// ## Panics
@@ -120,18 +118,14 @@ impl fmt::Debug for Keypair {
 #[cfg(feature = "b64")]
 impl fmt::Display for Keypair {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		base64::display::Base64Display::new(
-			&self.to_bytes(),
-			&URL_SAFE_NO_PAD
-		).fmt(f)
+		base64::display::Base64Display::new(&self.to_bytes(), &URL_SAFE_NO_PAD)
+			.fmt(f)
 	}
 }
 
 impl From<[u8; 32]> for Keypair {
 	fn from(bytes: [u8; 32]) -> Self {
-		Self::from_static_secret(
-			x::StaticSecret::from(bytes)
-		)
+		Self::from_static_secret(x::StaticSecret::from(bytes))
 	}
 }
 
@@ -151,11 +145,12 @@ impl crate::FromStr for Keypair {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		if s.len() != crate::calculate_b64_len(Self::LEN) {
-			return Err(DecodeError::InvalidLength)
+			return Err(DecodeError::InvalidLength);
 		}
 
 		let mut bytes = [0u8; Self::LEN];
-		URL_SAFE_NO_PAD.decode_slice_unchecked(s, &mut bytes)
+		URL_SAFE_NO_PAD
+			.decode_slice_unchecked(s, &mut bytes)
 			.map(|_| Self::from(bytes))
 			.map_err(DecodeError::inv_bytes)
 	}
@@ -168,22 +163,25 @@ mod impl_serde {
 	use std::borrow::Cow;
 	use std::str::FromStr;
 
-	use _serde::{Serialize, Serializer, Deserialize, Deserializer};
 	use _serde::de::Error;
+	use _serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 	impl Serialize for Keypair {
 		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S: Serializer {
+		where
+			S: Serializer,
+		{
 			serializer.collect_str(&self)
 		}
 	}
 
 	impl<'de> Deserialize<'de> for Keypair {
 		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-		where D: Deserializer<'de> {
+		where
+			D: Deserializer<'de>,
+		{
 			let s: Cow<'_, str> = Deserialize::deserialize(deserializer)?;
-			Self::from_str(s.as_ref())
-				.map_err(D::Error::custom)
+			Self::from_str(s.as_ref()).map_err(D::Error::custom)
 		}
 	}
 }

@@ -1,12 +1,12 @@
 use super::{Key, Nonce};
 
-use std::{fmt, cmp};
+use std::{cmp, fmt};
 
 use x25519_dalek as x;
 
 // should be hashed with
 pub struct SharedSecret {
-	inner: x::SharedSecret
+	inner: x::SharedSecret,
 }
 
 impl SharedSecret {

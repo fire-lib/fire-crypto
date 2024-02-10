@@ -1,19 +1,19 @@
 use crate::error::TryFromError;
 
-use std::fmt;
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 
 use poly1305::Tag;
 
 // Tag is an universal_hash::Output which provides a `Eq` implementation with
 // constant time
 /// A message authentication code.
-/// 
+///
 /// This is used to authenticate a message and it should always be transferred
 /// with the ciphertext. Without it data integrity and authenticity is not guaranteed.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Mac {
-	tag: Tag
+	tag: Tag,
 }
 
 impl Mac {

@@ -1,6 +1,5 @@
-
-use std::fmt;
 use std::error::Error;
+use std::fmt;
 
 /// Either the length or the format of a slice is incorrect
 #[derive(Debug, Copy, Clone)]
@@ -16,7 +15,7 @@ impl fmt::Display for TryFromError {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		f.write_str(
 			"TryFrom<&[u8]> failed: \
-			either the length is incorrect or the format"
+			either the length is incorrect or the format",
 		)
 	}
 }
@@ -28,7 +27,7 @@ impl Error for TryFromError {}
 #[non_exhaustive]
 pub enum DecodeError {
 	InvalidLength,
-	InvalidBytes
+	InvalidBytes,
 }
 
 impl DecodeError {

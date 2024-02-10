@@ -60,7 +60,9 @@ mod tests {
 	#[cfg(feature = "b64")]
 	#[test]
 	pub fn static_keypair_and_signature_test() {
-		let alice = Keypair::from_str("ZMIO9cdDRvhD6QXo9mR94REWV0810FRTXCkoG3mIO8k").unwrap();
+		let alice =
+			Keypair::from_str("ZMIO9cdDRvhD6QXo9mR94REWV0810FRTXCkoG3mIO8k")
+				.unwrap();
 
 		let msg = b"Hey thats my message";
 

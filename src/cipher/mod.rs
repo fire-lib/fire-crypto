@@ -158,8 +158,12 @@ mod tests {
 	#[cfg(feature = "b64")]
 	#[test]
 	pub fn static_encrypt_decrypt() {
-		let alice = Keypair::from_str("4KbU6aVELDln5wCADIA53wBrldKuaoRFA4Pw0WB73XQ").unwrap();
-		let bob = Keypair::from_str("WG1CTI9LGEtUZbLFI1glU-8jIsfh3VkzrUKrmUqeqU8").unwrap();
+		let alice =
+			Keypair::from_str("4KbU6aVELDln5wCADIA53wBrldKuaoRFA4Pw0WB73XQ")
+				.unwrap();
+		let bob =
+			Keypair::from_str("WG1CTI9LGEtUZbLFI1glU-8jIsfh3VkzrUKrmUqeqU8")
+				.unwrap();
 
 		let alice_ssk = alice.diffie_hellman(bob.public());
 		let bob_ssk = bob.diffie_hellman(alice.public());

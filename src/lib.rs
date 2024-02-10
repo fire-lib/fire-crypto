@@ -23,7 +23,7 @@ pub mod error;
 
 // from https://docs.rs/crate/chacha20/0.3.4/source/src/cipher.rs
 /// Xors two buffers. Both buffers need to have the same length.
-/// 
+///
 /// ## Panics
 /// When the buffers don't have the same length.
 pub fn xor(buf: &mut [u8], key: &[u8]) {
@@ -40,7 +40,7 @@ pub fn fill_random(buf: &mut [u8]) {
 }
 
 /// todo replace when rust #88582 get's stabilized
-/// 
+///
 /// Since this function multiplies s with 4
 /// s needs to be 1/4 of usize::MAX in practice this should not be a problem
 /// since the tokens won't be that long.
@@ -57,4 +57,3 @@ const fn calculate_b64_len(s: usize) -> usize {
 
 	d
 }
-

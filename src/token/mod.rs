@@ -1,22 +1,22 @@
-use crate::error::TryFromError;
 #[cfg(feature = "b64")]
 use crate::error::DecodeError;
+use crate::error::TryFromError;
 
-use std::fmt;
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 
 use rand::rngs::OsRng;
 use rand::RngCore;
 
 #[cfg(feature = "b64")]
-use base64::Engine;
-#[cfg(feature = "b64")]
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+#[cfg(feature = "b64")]
+use base64::Engine;
 
 /// A random Token
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Token<const S: usize> {
-	bytes: [u8; S]
+	bytes: [u8; S],
 }
 
 impl<const S: usize> Token<S> {
@@ -47,28 +47,22 @@ impl<const S: usize> Token<S> {
 #[cfg(not(feature = "b64"))]
 impl<const S: usize> fmt::Debug for Token<S> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_tuple("Token")
-			.field(&self.as_ref())
-			.finish()
+		f.debug_tuple("Token").field(&self.as_ref()).finish()
 	}
 }
 
 #[cfg(feature = "b64")]
 impl<const S: usize> fmt::Debug for Token<S> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_tuple("Token")
-			.field(&self.to_string())
-			.finish()
+		f.debug_tuple("Token").field(&self.to_string()).finish()
 	}
 }
 
 #[cfg(feature = "b64")]
 impl<const S: usize> fmt::Display for Token<S> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		base64::display::Base64Display::new(
-			self.as_ref(),
-			&URL_SAFE_NO_PAD
-		).fmt(f)
+		base64::display::Base64Display::new(self.as_ref(), &URL_SAFE_NO_PAD)
+			.fmt(f)
 	}
 }
 
@@ -94,11 +88,12 @@ impl<const S: usize> crate::FromStr for Token<S> {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		if s.len() != crate::calculate_b64_len(S) {
-			return Err(DecodeError::InvalidLength)
+			return Err(DecodeError::InvalidLength);
 		}
 
 		let mut bytes = [0u8; S];
-		URL_SAFE_NO_PAD.decode_slice_unchecked(s, &mut bytes)
+		URL_SAFE_NO_PAD
+			.decode_slice_unchecked(s, &mut bytes)
 			.map_err(DecodeError::inv_bytes)
 			.map(|_| Self::from(bytes))
 	}
@@ -117,22 +112,25 @@ mod impl_serde {
 	use std::borrow::Cow;
 	use std::str::FromStr;
 
-	use _serde::{Serialize, Serializer, Deserialize, Deserializer};
 	use _serde::de::Error;
+	use _serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 	impl<const SI: usize> Serialize for Token<SI> {
 		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where S: Serializer {
+		where
+			S: Serializer,
+		{
 			serializer.collect_str(&self)
 		}
 	}
 
 	impl<'de, const S: usize> Deserialize<'de> for Token<S> {
 		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-		where D: Deserializer<'de> {
+		where
+			D: Deserializer<'de>,
+		{
 			let s: Cow<'_, str> = Deserialize::deserialize(deserializer)?;
-			Self::from_str(s.as_ref())
-				.map_err(D::Error::custom)
+			Self::from_str(s.as_ref()).map_err(D::Error::custom)
 		}
 	}
 }
@@ -142,12 +140,12 @@ mod protobuf {
 	use super::*;
 
 	use fire_protobuf::{
-		WireType,
+		bytes::BytesWrite,
+		decode::{DecodeError, DecodeMessage, FieldKind},
 		encode::{
-			EncodeMessage, MessageEncoder, FieldOpt, SizeBuilder, EncodeError
+			EncodeError, EncodeMessage, FieldOpt, MessageEncoder, SizeBuilder,
 		},
-		decode::{DecodeMessage, FieldKind, DecodeError},
-		bytes::BytesWrite
+		WireType,
 	};
 
 	impl<const SI: usize> EncodeMessage for Token<SI> {
@@ -160,7 +158,7 @@ mod protobuf {
 		fn encoded_size(
 			&mut self,
 			field: Option<FieldOpt>,
-			builder: &mut SizeBuilder
+			builder: &mut SizeBuilder,
 		) -> Result<(), EncodeError> {
 			self.bytes.encoded_size(field, builder)
 		}
@@ -168,9 +166,11 @@ mod protobuf {
 		fn encode<B>(
 			&mut self,
 			field: Option<FieldOpt>,
-			encoder: &mut MessageEncoder<B>
+			encoder: &mut MessageEncoder<B>,
 		) -> Result<(), EncodeError>
-		where B: BytesWrite {
+		where
+			B: BytesWrite,
+		{
 			self.bytes.encode(field, encoder)
 		}
 	}
@@ -185,7 +185,7 @@ mod protobuf {
 		fn merge(
 			&mut self,
 			kind: FieldKind<'m>,
-			is_field: bool
+			is_field: bool,
 		) -> Result<(), DecodeError> {
 			self.bytes.merge(kind, is_field)
 		}
@@ -208,7 +208,6 @@ mod tests {
 		assert_eq!(b64, tok_2.to_string());
 	}
 
-	
 	#[test]
 	pub fn test_b64() {
 		b64::<1>();
