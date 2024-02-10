@@ -140,3 +140,68 @@ mod impl_serde {
 		}
 	}
 }
+
+#[cfg(feature = "protobuf")]
+mod impl_protobuf {
+	use super::*;
+
+	use fire_protobuf::{
+		bytes::BytesWrite,
+		decode::{DecodeError, DecodeMessage, FieldKind},
+		encode::{
+			EncodeError, EncodeMessage, FieldOpt, MessageEncoder, SizeBuilder,
+		},
+		WireType,
+	};
+
+	impl EncodeMessage for PublicKey {
+		const WIRE_TYPE: WireType = WireType::Len;
+
+		fn is_default(&self) -> bool {
+			false
+		}
+
+		fn encoded_size(
+			&mut self,
+			field: Option<FieldOpt>,
+			builder: &mut SizeBuilder,
+		) -> Result<(), EncodeError> {
+			self.as_ref().encoded_size(field, builder)
+		}
+
+		fn encode<B>(
+			&mut self,
+			field: Option<FieldOpt>,
+			encoder: &mut MessageEncoder<B>,
+		) -> Result<(), EncodeError>
+		where
+			B: BytesWrite,
+		{
+			self.as_ref().encode(field, encoder)
+		}
+	}
+
+	impl<'m> DecodeMessage<'m> for PublicKey {
+		const WIRE_TYPE: WireType = WireType::Len;
+
+		fn decode_default() -> Self {
+			Self {
+				inner: Default::default(),
+			}
+		}
+
+		fn merge(
+			&mut self,
+			kind: FieldKind<'m>,
+			is_field: bool,
+		) -> Result<(), DecodeError> {
+			let mut t = self.to_bytes();
+			t.merge(kind, is_field)?;
+
+			self.inner = ed::VerifyingKey::from_bytes(&t)
+				.map_err(|e| DecodeError::Other(e.to_string()))?;
+
+			Ok(())
+		}
+	}
+}

@@ -118,3 +118,66 @@ mod impl_serde {
 		}
 	}
 }
+
+#[cfg(feature = "protobuf")]
+mod impl_protobuf {
+	use super::*;
+
+	use fire_protobuf::{
+		bytes::BytesWrite,
+		decode::{DecodeError, DecodeMessage, FieldKind},
+		encode::{
+			EncodeError, EncodeMessage, FieldOpt, MessageEncoder, SizeBuilder,
+		},
+		WireType,
+	};
+
+	impl EncodeMessage for Signature {
+		const WIRE_TYPE: WireType = WireType::Len;
+
+		fn is_default(&self) -> bool {
+			false
+		}
+
+		fn encoded_size(
+			&mut self,
+			field: Option<FieldOpt>,
+			builder: &mut SizeBuilder,
+		) -> Result<(), EncodeError> {
+			self.to_bytes().encoded_size(field, builder)
+		}
+
+		fn encode<B>(
+			&mut self,
+			field: Option<FieldOpt>,
+			encoder: &mut MessageEncoder<B>,
+		) -> Result<(), EncodeError>
+		where
+			B: BytesWrite,
+		{
+			self.to_bytes().encode(field, encoder)
+		}
+	}
+
+	impl<'m> DecodeMessage<'m> for Signature {
+		const WIRE_TYPE: WireType = WireType::Len;
+
+		fn decode_default() -> Self {
+			Self::from_slice(&[0u8; 32])
+		}
+
+		fn merge(
+			&mut self,
+			kind: FieldKind<'m>,
+			is_field: bool,
+		) -> Result<(), DecodeError> {
+			let mut t = self.to_bytes();
+			t.merge(kind, is_field)?;
+
+			*self = Self::try_from(t.as_slice())
+				.map_err(|e| DecodeError::Other(e.to_string()))?;
+
+			Ok(())
+		}
+	}
+}

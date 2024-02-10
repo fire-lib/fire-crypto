@@ -1,7 +1,7 @@
 [package]
 name = "fire-crypto"
 description = "Crypto library providing encryption and signing."
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Sören Meier <info@soerenmeier.ch>"]
 repository = "https://github.com/fire-lib/fire-crypto"
 homepage = "https://fire-lib.com/"
@@ -9,13 +9,20 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["crypto", "signature", "cipher"]
 categories = ["cryptography"]
-rust-version = "1.63"
+rust-version = "1.67"
 
 [package.metadata.docs.rs]
 all-features = true
 
 [features]
-cipher = ["zeroize", "poly1305", "universal-hash", "chacha20", "x25519-dalek", "generic-array"]
+cipher = [
+	"zeroize",
+	"poly1305",
+	"universal-hash",
+	"chacha20",
+	"x25519-dalek",
+	"generic-array",
+]
 signature = ["ed25519-dalek"]
 
 b64 = ["base64"]
@@ -29,10 +36,15 @@ zeroize = { version = "1.6", optional = true }
 poly1305 = { version = "0.8", optional = true }
 universal-hash = { version = "0.5", optional = true }
 chacha20 = { version = "0.9", optional = true }
-x25519-dalek = { version = "2.0", optional = true, features = ["static_secrets"] }
+x25519-dalek = { version = "2.0", optional = true, features = [
+	"static_secrets",
+] }
 
 #signature
-ed25519-dalek = { version = "2.0", optional = true, features = ["zeroize", "rand_core"] }
+ed25519-dalek = { version = "2.0", optional = true, features = [
+	"zeroize",
+	"rand_core",
+] }
 
 #hash
 blake2 = { version = "0.10", optional = true }
