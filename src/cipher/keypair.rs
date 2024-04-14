@@ -185,3 +185,47 @@ mod impl_serde {
 		}
 	}
 }
+
+#[cfg(all(feature = "b64", feature = "postgres"))]
+mod impl_postgres {
+	use super::*;
+
+	use bytes::BytesMut;
+	use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
+
+	impl ToSql for Keypair {
+		fn to_sql(
+			&self,
+			ty: &Type,
+			out: &mut BytesMut,
+		) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>>
+		where
+			Self: Sized,
+		{
+			self.to_string().to_sql(ty, out)
+		}
+
+		fn accepts(ty: &Type) -> bool
+		where
+			Self: Sized,
+		{
+			<&str as ToSql>::accepts(ty)
+		}
+
+		to_sql_checked!();
+	}
+
+	impl<'r> FromSql<'r> for Keypair {
+		fn from_sql(
+			ty: &Type,
+			raw: &'r [u8],
+		) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+			let s = <&str as FromSql>::from_sql(ty, raw)?;
+			s.parse().map_err(Into::into)
+		}
+
+		fn accepts(ty: &Type) -> bool {
+			<&str as FromSql>::accepts(ty)
+		}
+	}
+}
